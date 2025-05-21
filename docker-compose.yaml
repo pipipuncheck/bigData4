@@ -1,0 +1,56 @@
+version: "3.9"
+services:
+  trino:
+    image: "trinodb/trino:455"
+    container_name: trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./configs/etc:/etc/trino:ro
+      - ./configs/catalog:/etc/trino/catalog:ro
+      - ./trino-data:/var/trino
+      - ./configs/hosts/custom_hosts:/tmp/custom_hosts:ro
+    networks:
+      - trino-network
+    depends_on:
+      - postgres_lab4
+      - clickhouse_lab4
+    extra_hosts:
+      - "localhost:172.21.0.3"
+
+  clickhouse_lab4:
+    image: clickhouse/clickhouse-server:21.3.20.1
+    container_name: clickhouse_lab4
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+      - "9009:9009"
+    networks:
+      - trino-network
+    volumes:
+      - ./clickhouse/binary/clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/scripts:/docker-entrypoint-initdb.d
+    environment:
+      - CLICKHOUSE_USER=user
+      - CLICKHOUSE_PASSWORD=password
+
+  postgres_lab4:
+    image: postgres:13.3-alpine
+    container_name: postgres_lab4
+    restart: unless-stopped
+    ports:
+      - "5438:5432"
+    networks:
+      - trino-network
+    environment:
+      POSTGRES_DB: "db"
+      POSTGRES_USER: "user"
+      POSTGRES_PASSWORD: "password"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - ./dbdata:/var/lib/postgresql/data
+      - ./dbroot:/root
+
+networks:
+  trino-network:
+    driver: bridge
